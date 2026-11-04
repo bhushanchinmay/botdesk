@@ -3,6 +3,7 @@ package io.github.bhushanchinmay.botdesk;
 import io.github.bhushanchinmay.botdesk.agent.ToolLoopAgent;
 import io.github.bhushanchinmay.botdesk.chat.ChatService;
 import io.github.bhushanchinmay.botdesk.config.Config;
+import io.github.bhushanchinmay.botdesk.config.SetupCheck;
 import io.github.bhushanchinmay.botdesk.llm.LlmClient;
 import io.github.bhushanchinmay.botdesk.llm.OpenAiCompatibleClient;
 import io.github.bhushanchinmay.botdesk.orchestrator.Orchestrator;
@@ -14,7 +15,10 @@ import io.github.bhushanchinmay.botdesk.slack.SlackGateway;
 import io.github.bhushanchinmay.botdesk.store.Store;
 import io.github.bhushanchinmay.botdesk.web.DashboardServer;
 
+import java.net.http.HttpClient;
 import java.nio.file.Path;
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -24,14 +28,20 @@ import java.util.logging.Logger;
  * Wires the parts together. No framework: constructor injection by hand, so every
  * dependency is visible in one place.
  *
- * Usage: java -jar botdesk.jar [path/to/botdesk.json]
+ * Usage: java -jar botdesk.jar [path/to/botdesk.json] [--check]
  */
 public final class Main {
 
     private static final Logger LOG = Logger.getLogger(Main.class.getName());
 
     public static void main(String[] args) throws Exception {
-        Config config = Config.load(Path.of(args.length > 0 ? args[0] : "botdesk.json"));
+        boolean checkOnly = List.of(args).contains("--check");
+        String configPath = Arrays.stream(args).filter(a -> !a.startsWith("--")).findFirst().orElse("botdesk.json");
+        Config config = Config.load(Path.of(configPath));
+
+        // Check every role's key and model first. With --check, that is all we do.
+        boolean ready = new SetupCheck(config, System::getenv, HttpClient.newHttpClient(), System.out).run();
+        if (checkOnly) System.exit(ready ? 0 : 1);
 
         Store store = new Store(config.dataDir());
         Registry registry = Registry.load(config.projectsDir(), config.playbooksDir());

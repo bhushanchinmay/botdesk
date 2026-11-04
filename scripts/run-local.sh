@@ -31,4 +31,5 @@ if [[ ! -f botdesk.jar ]] || [[ -n "$(find src -newer botdesk.jar -type f | head
   ./build.sh
 fi
 
-exec java -Xmx128m -XX:+UseSerialGC -jar botdesk.jar botdesk.json
+# Pass --check to only test keys and models: ./scripts/run-local.sh --check
+exec java -Xmx128m -XX:+UseSerialGC -jar botdesk.jar botdesk.json "$@"
