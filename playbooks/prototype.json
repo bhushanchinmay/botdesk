@@ -1,0 +1,9 @@
+{
+  "kind": "prototype",
+  "description": "Turn an idea into a small working prototype",
+  "leadGuide": "Define the thinnest working version: one main flow, simple structure, a README and a few tests. List what is deliberately left out.",
+  "engineerGuide": "Build the smallest working version of the idea with a clear structure, a README explaining how to run it, and tests for the main flow. Prefer the standard library over new dependencies. Make sure the project's checks pass.",
+  "reviewRubric": "Does the main flow work end to end? Is the structure easy to extend? Is the README enough for a new developer to run it? Is anything over-built for a prototype?",
+  "requireTestChange": true,
+  "allowEmptyDiff": false
+}

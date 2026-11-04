@@ -1,0 +1,8 @@
+data/
+out/
+botdesk.jar
+.env
+.DS_Store
+demo/
+target/
+projects/*.json

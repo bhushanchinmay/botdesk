@@ -1,0 +1,9 @@
+{
+  "kind": "bugfix",
+  "description": "Fix a reported bug",
+  "leadGuide": "Restate the bug as expected vs actual behavior. Plan: reproduce with a failing test first, then fix the root cause, not the symptom.",
+  "engineerGuide": "First write a test that fails because of the bug and run the checks to see it fail. Then fix the root cause and run the checks until everything passes. Do not change unrelated behavior.",
+  "reviewRubric": "Does the new test fail without the fix and pass with it? Is the root cause fixed rather than masked? Could the fix break other callers?",
+  "requireTestChange": true,
+  "allowEmptyDiff": false
+}

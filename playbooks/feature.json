@@ -1,0 +1,9 @@
+{
+  "kind": "feature",
+  "description": "Build a new feature or capability",
+  "leadGuide": "Break the feature into the smallest slice that delivers value. Name the files likely to change and the tests that will prove it. Push back on scope that is not needed now.",
+  "engineerGuide": "Write or update tests for the new behavior first, then implement until the checks pass. Match existing patterns. Update the README if the feature changes how the project is used.",
+  "reviewRubric": "Does it fully meet the acceptance criteria? Is the design simple and consistent with the codebase? Do the tests cover the main path and at least one edge case? Any scope creep?",
+  "requireTestChange": true,
+  "allowEmptyDiff": false
+}

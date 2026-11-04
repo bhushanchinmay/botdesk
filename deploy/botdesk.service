@@ -1,0 +1,23 @@
+[Unit]
+Description=botdesk bot orchestrator
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=botdesk
+WorkingDirectory=/opt/botdesk
+EnvironmentFile=/opt/botdesk/.env
+# Small heap and the simple garbage collector keep memory around 100 MB.
+ExecStart=/usr/bin/java -Xmx128m -XX:+UseSerialGC -jar /opt/botdesk/botdesk.jar /opt/botdesk/botdesk.json
+Restart=on-failure
+RestartSec=5
+
+# Hardening: the service can write only to its data folder.
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/opt/botdesk/data
+
+[Install]
+WantedBy=multi-user.target

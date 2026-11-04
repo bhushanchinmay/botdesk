@@ -1,0 +1,64 @@
+{
+  "server": { "bind": "127.0.0.1", "port": 8080 },
+  "timezone": "Asia/Kolkata",
+  "dataDir": "data",
+  "projectsDir": "projects",
+  "playbooksDir": "playbooks",
+  "workspacesDir": "data/workspaces",
+
+  "tickSeconds": 5,
+  "maxRepairCycles": 2,
+  "maxAgentSteps": 30,
+  "reviewPassScore": 8,
+  "checkTimeoutSeconds": 600,
+  "monthlyBudgetUsd": 10,
+  "taskBudgetUsd": 2.0,
+
+  "providers": {
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "headers": { "X-Title": "botdesk" },
+      "extraBody": { "usage": { "include": true } }
+    },
+    "experiential": {
+      "baseUrl": "https://api.experientiallabs.ai/v1",
+      "apiKeyEnv": "EXPERIENTIAL_API_KEY"
+    },
+    "commandcode": {
+      "baseUrl": "https://api.commandcode.ai/provider/v1",
+      "apiKeyEnv": "COMMANDCODE_API_KEY"
+    }
+  },
+
+  "roles": {
+    "lead":     { "provider": "openrouter", "model": "anthropic/claude-opus-5.5" },
+    "engineer": { "provider": "openrouter", "model": "anthropic/claude-sonnet-5.5" },
+    "reviewer": { "provider": "openrouter", "model": "openai/gpt-5.5" }
+  },
+
+  "git": {
+    "name": "Chinmay Bhushan",
+    "email": "21293962+bhushanchinmay@users.noreply.github.com"
+  },
+  "githubTokenEnv": "GITHUB_TOKEN",
+
+  "routines": [
+    {
+      "name": "nightly-build-health",
+      "project": "shop-cart",
+      "kind": "maintenance",
+      "title": "Nightly build health",
+      "goal": "Run all checks. Fix anything broken. If everything passes, report that the build is healthy.",
+      "everyHours": 24,
+      "enabled": false
+    }
+  ],
+
+  "slack": {
+    "enabled": false,
+    "appTokenEnv": "SLACK_APP_TOKEN",
+    "botTokenEnv": "SLACK_BOT_TOKEN",
+    "notifyChannel": ""
+  }
+}

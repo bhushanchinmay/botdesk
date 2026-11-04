@@ -1,0 +1,10 @@
+{
+  "kind": "investigate",
+  "description": "Support: answer a question about the code or triage an issue, without changing code",
+  "leadGuide": "Turn the question into what must be found out and where to look. The output is an answer with file and line references, not a code change.",
+  "engineerGuide": "Read and search the code to answer the question. Do not change any files. Call finish with a clear answer that cites file paths and line numbers, and suggested next steps if a fix is needed.",
+  "reviewRubric": "Is the answer correct and backed by specific file and line references? Is it clear what to do next? Were any files changed (they should not be)?",
+  "requireTestChange": false,
+  "allowEmptyDiff": true,
+  "readOnly": true
+}

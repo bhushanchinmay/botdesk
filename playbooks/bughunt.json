@@ -1,0 +1,9 @@
+{
+  "kind": "bughunt",
+  "description": "Find and fix real bugs nobody reported yet",
+  "leadGuide": "Pick one area of the code most likely to hide bugs (input handling, edge cases, money or time math, concurrency). Plan to prove each bug with a failing test before fixing it.",
+  "engineerGuide": "Read the chosen area carefully. Look for off-by-one errors, null or empty input, rounding, wrong defaults, unhandled errors. For each real bug: write a failing test, then fix it. Report what you checked and found. If you find no real bug, say so and change nothing.",
+  "reviewRubric": "Is each bug real and proven by a test, not a style opinion? Are fixes minimal? Is the report honest about what was and was not checked?",
+  "requireTestChange": true,
+  "allowEmptyDiff": true
+}
