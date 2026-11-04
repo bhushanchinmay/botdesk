@@ -18,6 +18,10 @@ import java.util.Optional;
  * <p>Implementations must be safe to call from several threads. Every write must be durable before
  * the method returns, because a task's state on disk is what makes a restart safe.
  *
+ * <p>{@link #task} and {@link #tasks} return the live {@link Task} objects, not copies; see the
+ * threading note on {@code Task}. A database implementation would return fresh objects per call and
+ * guard updates with a version column instead.
+ *
  * <p>Today: {@link JsonFileStore}. A Postgres implementation would add row locking
  * ({@code SELECT ... FOR UPDATE SKIP LOCKED}) so several orchestrator workers can share one store.
  */

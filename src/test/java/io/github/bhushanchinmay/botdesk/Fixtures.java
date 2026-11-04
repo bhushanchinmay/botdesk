@@ -18,9 +18,11 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /** Shared test helpers: temp dirs, a real git repo, config, a scripted fake LLM, a stub HTTP server. */
 final class Fixtures {
@@ -45,7 +47,7 @@ final class Fixtures {
         return new Config("127.0.0.1", 0, ZoneId.of("Asia/Kolkata"), dir.resolve("data"), dir.resolve("projects"),
                 dir.resolve("playbooks"), dir.resolve("data/workspaces"), 1, 2, 10, 8, 30, monthlyBudget, 1.0,
                 providers, roles, new Config.GitIdentity("Chinmay Bhushan", "21293962+bhushanchinmay@users.noreply.github.com"),
-                "GITHUB_TOKEN", List.of(), new Config.Slack(false, "", "", ""));
+                "GITHUB_TOKEN", List.of(), new Config.Slack(false, "", "", "", List.of()), List.of());
     }
 
     /**
@@ -98,7 +100,14 @@ final class Fixtures {
     /** Replies from a per-role script, in order. Records every request it receives. */
     static final class FakeLlm implements LlmClient {
         private final Map<String, Deque<Result>> scripts = new HashMap<>();
+        private final Set<String> interruptRoles = new HashSet<>();
         final List<Request> requests = new ArrayList<>();
+
+        /** Simulates shutdown: calls for this role interrupt the thread, as the real client would see. */
+        FakeLlm interruptOn(String role) {
+            interruptRoles.add(role);
+            return this;
+        }
 
         FakeLlm text(String role, String... texts) {
             for (String t : texts) script(role).add(result(t, List.of()));
@@ -127,6 +136,10 @@ final class Fixtures {
         @Override
         public Result complete(Request request) {
             requests.add(request);
+            if (interruptRoles.contains(request.role())) {
+                Thread.currentThread().interrupt();
+                throw new LlmException("Interrupted");
+            }
             Deque<Result> script = scripts.get(request.role());
             if (script == null || script.isEmpty()) throw new LlmException("No scripted reply for " + request.role());
             return script.poll();

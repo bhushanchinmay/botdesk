@@ -42,9 +42,9 @@ public final class OpenAiCompatibleClient implements LlmClient {
     private final UnaryOperator<String> env;
     private final Duration retryBackoff;
 
-    public OpenAiCompatibleClient(Config config, Store store) {
-        this(config, store, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build(),
-                System::getenv, Duration.ofSeconds(2));
+    /** @param http shared client: HttpClient is immutable and thread-safe, and reusing it reuses connections. */
+    public OpenAiCompatibleClient(Config config, Store store, HttpClient http) {
+        this(config, store, http, System::getenv, Duration.ofSeconds(2));
     }
 
     /** Test constructor: inject env lookup and a zero backoff. */
@@ -82,6 +82,10 @@ public final class OpenAiCompatibleClient implements LlmClient {
         return result;
     }
 
+    /**
+     * Soft limit: two calls that start at the same moment can both pass and overshoot by one call.
+     * Acceptable for one user; a hard limit would reserve the estimated cost before each call.
+     */
     private void checkBudget(long taskId) {
         Instant monthStart = ZonedDateTime.now(ZoneOffset.UTC).withDayOfMonth(1).toLocalDate()
                 .atStartOfDay(ZoneOffset.UTC).toInstant();

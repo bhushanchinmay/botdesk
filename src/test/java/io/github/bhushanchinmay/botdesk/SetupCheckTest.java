@@ -29,7 +29,7 @@ public final class SetupCheckTest {
         roles.put("reviewer", new Config.Role("reviewer", "p", reviewer, 0, 0));
         return new Config("127.0.0.1", 0, ZoneId.of("UTC"), null, null, null, null, 1, 2, 10, 8, 30, 10, 1,
                 Map.of("p", new Config.Provider("p", url, "P_KEY", Map.of(), Map.of())), roles,
-                new Config.GitIdentity("a", "b"), "GITHUB_TOKEN", List.of(), new Config.Slack(false, "", "", ""));
+                new Config.GitIdentity("a", "b"), "GITHUB_TOKEN", List.of(), new Config.Slack(false, "", "", "", List.of()), List.of());
     }
 
     private static String run(Config c, UnaryOperator<String> env, boolean[] ok) {

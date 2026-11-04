@@ -139,8 +139,11 @@ public final class Json {
     }
 
     private static final class Parser {
+        /** Model replies are untrusted input: deep nesting must fail cleanly, not overflow the stack. */
+        private static final int MAX_DEPTH = 64;
         private final String s;
         private int pos;
+        private int depth;
 
         Parser(String s) { this.s = s; }
 
@@ -159,10 +162,11 @@ public final class Json {
         }
 
         Map<String, Object> readObject() {
+            enter();
             Map<String, Object> map = new LinkedHashMap<>();
             pos++;
             skipWhitespace();
-            if (peek() == '}') { pos++; return map; }
+            if (peek() == '}') { pos++; depth--; return map; }
             while (true) {
                 skipWhitespace();
                 String key = readString();
@@ -173,21 +177,24 @@ public final class Json {
                 skipWhitespace();
                 if (peek() == ',') { pos++; continue; }
                 expect('}');
+                depth--;
                 return map;
             }
         }
 
         List<Object> readArray() {
+            enter();
             List<Object> list = new ArrayList<>();
             pos++;
             skipWhitespace();
-            if (peek() == ']') { pos++; return list; }
+            if (peek() == ']') { pos++; depth--; return list; }
             while (true) {
                 skipWhitespace();
                 list.add(readValue());
                 skipWhitespace();
                 if (peek() == ',') { pos++; continue; }
                 expect(']');
+                depth--;
                 return list;
             }
         }
@@ -226,6 +233,10 @@ public final class Json {
             if (!s.startsWith(word, pos)) throw error("Bad literal");
             pos += word.length();
             return value;
+        }
+
+        private void enter() {
+            if (++depth > MAX_DEPTH) throw error("Nesting deeper than " + MAX_DEPTH);
         }
 
         void skipWhitespace() {

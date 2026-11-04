@@ -76,4 +76,29 @@ public final class WorkspaceTest {
         check(r.timedOut() && !r.passed(), "timed out");
         check(System.currentTimeMillis() - start < 5_000, "did not wait for the full command");
     }
+
+    // Regression: resolve(".") used to throw, which broke list_files "." and every search.
+    public static void testListAndSearchFromRoot() throws Exception {
+        Workspace ws = ws(Fixtures.tempDir(), Duration.ofSeconds(5));
+        ws.writeFile("src/App.java", "class App { int total; }\n");
+        check(ws.listFiles(".").contains("src/App.java"), "lists from the root");
+        check(ws.search("int total").contains("src/App.java"), "search finds the line");
+    }
+
+    public static void testSearchSkipsSymlinkedFiles() throws Exception {
+        Path dir = Fixtures.tempDir();
+        Workspace ws = ws(dir, Duration.ofSeconds(5));
+        Path secret = Files.writeString(Fixtures.tempDir().resolve("secret.txt"), "API_KEY=abc\n");
+        Files.createSymbolicLink(dir.resolve("link.txt"), secret);
+        check(!ws.search("API_KEY").contains("abc"), "a link must not leak files outside the workspace");
+    }
+
+    // Java 21 copes with (a+)+$, but nested .* still backtracks for minutes.
+    public static void testSlowRegexIsStopped() throws Exception {
+        Workspace ws = ws(Fixtures.tempDir(), Duration.ofSeconds(5));
+        ws.writeFile("a.txt", "a".repeat(40) + "\n");
+        long start = System.currentTimeMillis();
+        check(ws.search("(.*a){12}x").contains("too slow"), "reports a slow regex");
+        check(System.currentTimeMillis() - start < 10_000, "stopped by the time budget");
+    }
 }

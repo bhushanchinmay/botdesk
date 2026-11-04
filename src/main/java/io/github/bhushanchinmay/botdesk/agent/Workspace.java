@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -29,6 +30,8 @@ public final class Workspace {
     private static final int MAX_READ_BYTES = 120_000;
     private static final int MAX_OUTPUT_CHARS = 6_000;
     private static final int MAX_LIST = 400;
+    private static final int MAX_HITS = 60;
+    private static final Duration SEARCH_BUDGET = Duration.ofSeconds(3);
     private static final Pattern ANSI = Pattern.compile("\u001B\\[[0-9;?]*[A-Za-z]");
 
     private final Path root;
@@ -65,7 +68,9 @@ public final class Workspace {
             if (Files.exists(p) && !p.toRealPath().startsWith(root)) {
                 throw new SecurityException("Path escapes the workspace through a link: " + relative);
             }
-            Path parent = p.getParent();
+            // For a new file, its folder must not be a link that leads outside. Skip this for the
+            // root itself: the root's own parent is always outside the root.
+            Path parent = p.equals(root) ? null : p.getParent();
             if (parent != null && Files.exists(parent) && !parent.toRealPath().startsWith(root)) {
                 throw new SecurityException("Path escapes the workspace through a link: " + relative);
             }
@@ -84,7 +89,7 @@ public final class Workspace {
         if (!Files.isDirectory(start)) return "Not a directory: " + dir;
         List<String> out = new ArrayList<>();
         try (Stream<Path> walk = Files.walk(start, 6)) {
-            walk.filter(Files::isRegularFile)
+            walk.filter(f -> Files.isRegularFile(f, LinkOption.NOFOLLOW_LINKS))
                     .map(this::rel)
                     .filter(r -> !r.startsWith(".git") && !r.contains("/.git/") && !r.contains("node_modules/")
                             && !r.startsWith("target/") && !r.startsWith("build/") && !r.startsWith("out/"))
@@ -112,9 +117,10 @@ public final class Workspace {
             return "Bad regex: " + e.getDescription();
         }
         List<String> hits = new ArrayList<>();
+        long deadline = System.nanoTime() + SEARCH_BUDGET.toNanos();
         for (String file : listFiles(".").split("\n")) {
             if (file.isBlank() || file.startsWith("...")) continue;
-            Path p = root.resolve(file);
+            Path p = resolve(file);
             if (Files.size(p) > MAX_READ_BYTES) continue;
             List<String> lines;
             try {
@@ -122,8 +128,15 @@ public final class Workspace {
             } catch (IOException e) {
                 continue; // binary or unreadable
             }
-            for (int i = 0; i < lines.size() && hits.size() < 60; i++) {
-                if (pattern.matcher(lines.get(i)).find()) hits.add(file + ":" + (i + 1) + ": " + lines.get(i).strip());
+            for (int i = 0; i < lines.size() && hits.size() < MAX_HITS; i++) {
+                try {
+                    if (pattern.matcher(new Deadline(lines.get(i), deadline)).find()) {
+                        hits.add(file + ":" + (i + 1) + ": " + lines.get(i).strip());
+                    }
+                } catch (SearchTimeout e) {
+                    return "Search stopped after " + SEARCH_BUDGET.toSeconds() + "s: the regex is too slow."
+                            + " Use a simpler pattern. Matches so far:\n" + String.join("\n", hits);
+                }
             }
         }
         return hits.isEmpty() ? "No matches" : String.join("\n", hits);
@@ -188,6 +201,31 @@ public final class Workspace {
 
     public List<CheckResult> runAllChecks() {
         return checkNames().stream().map(this::runCheck).toList();
+    }
+
+    /**
+     * A CharSequence that gives up after a deadline. Java regex reads its input through charAt, so this
+     * is the standard way to stop catastrophic backtracking, for example "(a+)+$", without a thread.
+     */
+    private record Deadline(CharSequence text, long deadlineNanos) implements CharSequence {
+        @Override
+        public char charAt(int index) {
+            if (System.nanoTime() > deadlineNanos) throw new SearchTimeout();
+            return text.charAt(index);
+        }
+
+        @Override
+        public int length() { return text.length(); }
+
+        @Override
+        public CharSequence subSequence(int start, int end) { return new Deadline(text.subSequence(start, end), deadlineNanos); }
+
+        @Override
+        public String toString() { return text.toString(); }
+    }
+
+    private static final class SearchTimeout extends RuntimeException {
+        SearchTimeout() { super(null, null, false, false); }
     }
 
     private static String tail(String s) {

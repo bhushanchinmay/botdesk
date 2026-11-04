@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -18,6 +19,8 @@ import java.util.concurrent.TimeUnit;
  * each other, and nothing here ever writes to the base branch.
  */
 public final class Git {
+
+    private static final Duration TIMEOUT = Duration.ofSeconds(120);
 
     private final Config.GitIdentity identity;
 
@@ -81,19 +84,31 @@ public final class Git {
         env.put("GIT_COMMITTER_NAME", identity.name());
         env.put("GIT_COMMITTER_EMAIL", identity.email());
         env.put("GIT_TERMINAL_PROMPT", "0");
+        // Send output to a file, not a pipe: reading a pipe first would block until git exits,
+        // so the timeout below could never fire (for example a push stuck on the network).
+        Path log = null;
         try {
+            log = Files.createTempFile("botdesk-git", ".log");
+            pb.redirectOutput(log.toFile());
             Process p = pb.start();
-            String out = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
-            if (!p.waitFor(120, TimeUnit.SECONDS)) {
+            if (!p.waitFor(TIMEOUT.toSeconds(), TimeUnit.SECONDS)) {
                 p.destroyForcibly();
-                return new Outcome(-1, "timed out");
+                return new Outcome(-1, "git timed out after " + TIMEOUT.toSeconds() + "s");
             }
-            return new Outcome(p.exitValue(), out);
+            return new Outcome(p.exitValue(), Files.readString(log, StandardCharsets.UTF_8));
         } catch (IOException e) {
             return new Outcome(-1, e.getMessage());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return new Outcome(-1, "interrupted");
+        } finally {
+            if (log != null) {
+                try {
+                    Files.deleteIfExists(log);
+                } catch (IOException ignored) {
+                    // temp file; the OS cleans it up
+                }
+            }
         }
     }
 }

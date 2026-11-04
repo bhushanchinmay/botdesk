@@ -16,7 +16,10 @@ import java.net.InetSocketAddress;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
@@ -26,6 +29,10 @@ import java.util.logging.Logger;
  * Security model: binds to 127.0.0.1 by default, so it is reachable only through an SSH
  * tunnel or Tailscale. Every POST must carry the X-Botdesk header (htmx adds it). A page on
  * another site cannot add custom headers to a cross-site request, which blocks CSRF.
+ *
+ * <p>DNS rebinding defeats both: a hostile site can make its own domain resolve to 127.0.0.1, and
+ * then the browser treats the dashboard as same-origin. So every request must also carry a Host
+ * header we recognise: localhost, 127.0.0.1, [::1], the bind address, or a configured allowedHosts entry.
  */
 public final class DashboardServer {
 
@@ -36,6 +43,7 @@ public final class DashboardServer {
     private final TaskService tasks;
     private final ChatService chat;
     private final Views views;
+    private final Set<String> allowedHosts;
     private HttpServer server;
 
     public DashboardServer(Config config, Store store, Registry registry, TaskService tasks, ChatService chat) {
@@ -44,6 +52,9 @@ public final class DashboardServer {
         this.tasks = tasks;
         this.chat = chat;
         this.views = new Views(config, store, registry);
+        Set<String> hosts = new HashSet<>(Set.of("localhost", "127.0.0.1", "[::1]", config.bind()));
+        hosts.addAll(config.allowedHosts());
+        this.allowedHosts = Set.copyOf(hosts);
     }
 
     public void start() throws IOException {
@@ -64,6 +75,10 @@ public final class DashboardServer {
         try {
             String method = ex.getRequestMethod();
             String path = ex.getRequestURI().getPath();
+            if (!hostAllowed(ex.getRequestHeaders().getFirst("Host"))) {
+                send(ex, 421, "text/plain", "Unknown Host header. Add it to server.allowedHosts if this is you.");
+                return;
+            }
             if (method.equals("POST") && !"1".equals(ex.getRequestHeaders().getFirst("X-Botdesk"))) {
                 send(ex, 403, "text/plain", "Missing X-Botdesk header");
                 return;
@@ -121,6 +136,18 @@ public final class DashboardServer {
     }
 
     // ---------- helpers ----------
+
+    /** Host is "name" or "name:port"; IPv6 literals keep their brackets. */
+    private boolean hostAllowed(String host) {
+        return hostAllowed(host, allowedHosts);
+    }
+
+    public static boolean hostAllowed(String host, Set<String> allowedHosts) {
+        if (host == null || host.isBlank()) return false;
+        String name = host.startsWith("[") ? host.substring(0, host.indexOf(']') + 1)
+                : host.contains(":") ? host.substring(0, host.lastIndexOf(':')) : host;
+        return allowedHosts.contains(name.toLowerCase(Locale.ROOT));
+    }
 
     /** Tells htmx to reload the page after a successful POST. */
     private static void refresh(HttpExchange ex) throws IOException {

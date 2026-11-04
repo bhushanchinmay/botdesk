@@ -16,13 +16,14 @@ public final class GitHub {
 
     private final String token;
     private final String apiBase;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
+    private final HttpClient http;
 
-    public GitHub(String token) { this(token, "https://api.github.com"); }
+    public GitHub(String token, HttpClient http) { this(token, "https://api.github.com", http); }
 
-    public GitHub(String token, String apiBase) {
+    public GitHub(String token, String apiBase, HttpClient http) {
         this.token = token;
         this.apiBase = apiBase;
+        this.http = http;
     }
 
     public boolean configured() { return token != null && !token.isBlank(); }

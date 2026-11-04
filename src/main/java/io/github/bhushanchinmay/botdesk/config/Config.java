@@ -24,7 +24,7 @@ public record Config(
         double monthlyBudgetUsd, double taskBudgetUsd,
         Map<String, Provider> providers, Map<String, Role> roles,
         GitIdentity git, String githubTokenEnv,
-        List<Routine> routines, Slack slack) {
+        List<Routine> routines, Slack slack, List<String> allowedHosts) {
 
     /** Any OpenAI-compatible endpoint: OpenRouter, Experiential Labs, Command Code, etc. */
     public record Provider(String name, String baseUrl, String apiKeyEnv,
@@ -39,7 +39,9 @@ public record Config(
     public record Routine(String name, String project, String kind, String title, String goal,
                           int everyHours, boolean enabled) {}
 
-    public record Slack(boolean enabled, String appTokenEnv, String botTokenEnv, String notifyChannel) {}
+    /** allowedUserIds: Slack member IDs allowed to command the team. Anyone else is ignored. */
+    public record Slack(boolean enabled, String appTokenEnv, String botTokenEnv, String notifyChannel,
+                        List<String> allowedUserIds) {}
 
     public static final int MIN_ROUTINE_HOURS = 1;
 
@@ -92,7 +94,8 @@ public record Config(
 
         Map<String, Object> s = Obj.map(root, "slack");
         Slack slack = new Slack(Obj.bool(s, "enabled", false), Obj.str(s, "appTokenEnv", "SLACK_APP_TOKEN"),
-                Obj.str(s, "botTokenEnv", "SLACK_BOT_TOKEN"), Obj.str(s, "notifyChannel", ""));
+                Obj.str(s, "botTokenEnv", "SLACK_BOT_TOKEN"), Obj.str(s, "notifyChannel", ""),
+                Obj.strings(s, "allowedUserIds"));
 
         Map<String, Object> g = Obj.map(root, "git");
         GitIdentity git = new GitIdentity(Obj.str(g, "name", "botdesk"), Obj.str(g, "email", "botdesk@localhost"));
@@ -109,7 +112,8 @@ public record Config(
                 (int) Obj.num(root, "maxAgentSteps", 30), (int) Obj.num(root, "reviewPassScore", 8),
                 (int) Obj.num(root, "checkTimeoutSeconds", 600),
                 Obj.dbl(root, "monthlyBudgetUsd", 10), Obj.dbl(root, "taskBudgetUsd", 2),
-                providers, roles, git, Obj.str(root, "githubTokenEnv", "GITHUB_TOKEN"), routines, slack);
+                providers, roles, git, Obj.str(root, "githubTokenEnv", "GITHUB_TOKEN"), routines, slack,
+                Obj.strings(server, "allowedHosts"));
     }
 
     @SuppressWarnings("unchecked")

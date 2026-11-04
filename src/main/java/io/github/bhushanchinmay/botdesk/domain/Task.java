@@ -10,6 +10,12 @@ import java.util.Map;
  * One ticket for the software team, and its handoff contract:
  * which project, what kind of work, the goal, the lead's plan, and what "done" means (acceptance).
  * State changes only through {@link #moveTo}. Git facts (branch, commits, PR) are recorded as work happens.
+ *
+ * <p>Threading: not thread-safe on purpose. A task is changed by one thread at a time: the orchestrator
+ * thread while the system owns it (BACKLOG, QUEUED, RUNNING, REVISING, IN_REVIEW, RELEASING), or a web
+ * thread inside synchronized {@code TaskService.answer} while it waits for you. Those state sets do not
+ * overlap, so the two never change the same task at once. Every change is followed by {@code Store.save},
+ * whose lock publishes it to other threads. The dashboard may read a step-old value; that is harmless.
  */
 public final class Task {
 

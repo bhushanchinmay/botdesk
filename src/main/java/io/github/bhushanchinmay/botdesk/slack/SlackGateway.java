@@ -10,9 +10,10 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.net.http.WebSocket;
-import java.time.Duration;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -38,15 +39,23 @@ public final class SlackGateway implements Notifier {
     private final String botToken;
     private final String notifyChannel;
     private final ChatService chat;
-    private final HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
-    private final ScheduledExecutorService reconnects = Executors.newSingleThreadScheduledExecutor();
+    private final Set<String> allowedUserIds;
+    private final HttpClient http;
+    private final ScheduledExecutorService reconnects = Executors.newSingleThreadScheduledExecutor(
+            Thread.ofPlatform().name("botdesk-slack-reconnect").daemon(true).factory());
     private final AtomicBoolean reconnectPending = new AtomicBoolean(false);
 
-    public SlackGateway(String appToken, String botToken, String notifyChannel, ChatService chat) {
+    public SlackGateway(String appToken, String botToken, String notifyChannel, List<String> allowedUserIds,
+                        ChatService chat, HttpClient http) {
+        if (allowedUserIds.isEmpty()) {
+            throw new IllegalArgumentException("Set slack.allowedUserIds: anyone else in the workspace could approve your tasks");
+        }
+        this.allowedUserIds = Set.copyOf(allowedUserIds);
         this.appToken = appToken;
         this.botToken = botToken;
         this.notifyChannel = notifyChannel;
         this.chat = chat;
+        this.http = http;
     }
 
     // ---------- 1. connect ----------
@@ -86,7 +95,11 @@ public final class SlackGateway implements Notifier {
             if (last) {
                 String frame = buffer.toString();
                 buffer.setLength(0);
-                handleFrame(ws, frame);
+                try {
+                    handleFrame(ws, frame);
+                } catch (RuntimeException e) {
+                    LOG.warning("Ignored a Slack frame that could not be handled: " + e.getMessage());
+                }
             }
             ws.request(1);
             return null;
@@ -123,6 +136,11 @@ public final class SlackGateway implements Notifier {
         boolean isDm = "message".equals(eventType) && "im".equals(Obj.str(event, "channel_type", ""));
         if (fromBot || !(isDm || "app_mention".equals(eventType))) return;
 
+        String user = Obj.str(event, "user", "");
+        if (!allowedUserIds.contains(user)) {
+            LOG.warning("Ignored a Slack message from a member not in slack.allowedUserIds: " + user);
+            return;
+        }
         String text = Obj.str(event, "text", "").replaceAll("<@[A-Z0-9]+>", "").trim();
         String channel = Obj.str(event, "channel", "");
         String threadTs = isDm ? null : Obj.str(event, "ts", null);

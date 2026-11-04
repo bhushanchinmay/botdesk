@@ -17,6 +17,7 @@ import io.github.bhushanchinmay.botdesk.project.Project;
 import io.github.bhushanchinmay.botdesk.store.JsonFileStore;
 import io.github.bhushanchinmay.botdesk.store.Store;
 
+import java.net.http.HttpClient;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -48,7 +49,7 @@ public final class PipelineTest {
         return new Rig(config, store, tasks, orch, llm, project);
     }
 
-    static Rig rig(Fixtures.FakeLlm llm) { return rig(llm, "", new GitHub(null)); }
+    static Rig rig(Fixtures.FakeLlm llm) { return rig(llm, "", new GitHub(null, HttpClient.newHttpClient())); }
 
     /** The engineer turns that correctly fix the bug, add a test, run it, and finish. */
     static void goodEngineer(Fixtures.FakeLlm llm) {
@@ -175,7 +176,7 @@ public final class PipelineTest {
                 .on("/repos/me/calc/pulls", 201, "{\"html_url\":\"https://github.com/me/calc/pull/7\"}")) {
             Fixtures.FakeLlm llm = new Fixtures.FakeLlm().text("lead", PLAN).text("reviewer", PASS);
             goodEngineer(llm);
-            Rig r = rig(llm, "me/calc", new GitHub("ghp_test", gh.url()));
+            Rig r = rig(llm, "me/calc", new GitHub("ghp_test", gh.url(), HttpClient.newHttpClient()));
             Path remote = r.project().repo().resolveSibling("remote.git");
             Fixtures.sh(r.project().repo(), "git init -q --bare " + remote + " && git remote add origin " + remote);
             Task task = r.tasks().create("calc", "bugfix", "add() subtracts", "fix it");
@@ -260,5 +261,21 @@ public final class PipelineTest {
         String prompt = (String) llm.requests.get(0).messages().get(1).get("content");
         check(!prompt.contains("null"), "no 'null' plan in the prompt: " + prompt);
         check(prompt.contains("already fails before your change"), "baseline failure handed to the engineer up front");
+    }
+
+    /** Graceful shutdown interrupts an in-flight step; the failure must still be saved, not left RUNNING. */
+    public static void testInterruptedStepIsSavedAsFailed() {
+        Fixtures.FakeLlm llm = new Fixtures.FakeLlm().text("lead", PLAN);
+        llm.interruptOn("engineer");
+        Rig r = rig(llm);
+        Task task = r.tasks().create("calc", "bugfix", "add() subtracts", "fix it");
+        approvePlan(r);
+        try {
+            r.orch().tick(5);
+        } finally {
+            Thread.interrupted(); // clear the flag so later tests are unaffected
+        }
+        eq(TaskState.FAILED, new JsonFileStore(r.config().dataDir()).task(task.id()).orElseThrow().state(),
+                "FAILED is on disk, so a restart shows a retry button");
     }
 }

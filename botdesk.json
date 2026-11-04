@@ -1,5 +1,5 @@
 {
-  "server": { "bind": "127.0.0.1", "port": 8080 },
+  "server": { "bind": "127.0.0.1", "port": 8080, "allowedHosts": [] },
   "timezone": "Asia/Kolkata",
   "dataDir": "data",
   "projectsDir": "projects",
@@ -59,6 +59,7 @@
     "enabled": false,
     "appTokenEnv": "SLACK_APP_TOKEN",
     "botTokenEnv": "SLACK_BOT_TOKEN",
-    "notifyChannel": ""
+    "notifyChannel": "",
+    "allowedUserIds": []
   }
 }

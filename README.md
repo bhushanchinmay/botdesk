@@ -125,6 +125,10 @@ git credentials for that remote. Without a token, release keeps the branch local
 | Start | `./scripts/run-local.sh` (keys from Keychain) | `./deploy/deploy.sh user@host` |
 | Auto-start | `./scripts/autostart-mac.sh on` | systemd service, included |
 | Dashboard | http://localhost:8080 | `ssh -N -L 8080:localhost:8080 user@host` |
+
+The dashboard only answers requests whose Host header is `localhost`, `127.0.0.1`, `[::1]` or the bind address.
+This blocks DNS rebinding (a hostile site making its own domain point at 127.0.0.1). If you open it through another
+name, such as a Tailscale hostname, add that name to `"server": { "allowedHosts": ["my-vps"] }`.
 | Good for | Demos, small repos | Nightly routines, bigger builds |
 
 botdesk itself needs about 100 MB. **Your project's build and tests are the real cost**: a Maven build wants 1 to 2 GB.
@@ -137,7 +141,9 @@ so **clone attached projects under `/opt/botdesk/data/repos/`** on the VPS (as t
 
 Socket Mode, so no public URL is needed. Create an app, enable Socket Mode, an app token with `connections:write`
 (`SLACK_APP_TOKEN`), bot scopes `chat:write`, `app_mentions:read`, `im:history`, `im:read`, subscribe to `app_mention`
-and `message.im`, install, then set `"slack": { "enabled": true, "notifyChannel": "C0123..." }`.
+and `message.im`, install, then set `"slack": { "enabled": true, "notifyChannel": "C0123...", "allowedUserIds": ["U0123..."] }`.
+`allowedUserIds` is required: anyone else in the workspace could otherwise type `approve 12`. Messages from other
+members are ignored and logged. Find your ID under your Slack profile, "Copy member ID".
 DM or @mention the bot. Commands: `status`, `approve 12`, `reject 12 reason`, `reply 12 text`.
 Anything else goes to the lead, which can create tasks for you.
 
@@ -145,7 +151,7 @@ Anything else goes to the lead, which can create tasks for you.
 
 ```bash
 ./build.sh          # builds botdesk.jar with plain javac
-./build.sh test     # 37 tests: real git repos, a scripted fake model; no network, no API cost
+./build.sh test     # 43 tests: real git repos, a scripted fake model; no network, no API cost
 ```
 
 ## 9a. Token use: code first, models last
@@ -195,7 +201,8 @@ Design decisions are recorded in [docs/adr/](docs/adr/).
 | Git worktree per task | Parallel-safe, never touches `main`, easy cleanup | Needs a local clone of each project |
 | Named checks only, no shell tool | Small, auditable attack surface | Agents cannot install tools or explore with ad-hoc commands |
 | Approval bound to a commit SHA | What you reviewed is exactly what ships | Any later change needs approval again |
-| Single orchestrator thread | No races between task steps | One step at a time; fine for one person |
+| Single orchestrator thread | No races between task steps; a task is changed by one thread at a time (see `Task`) | One step at a time; fine for one person |
+| Graceful shutdown | Waits 30 s for an in-flight step, then interrupts it so it fails cleanly into FAILED | A step cut off mid-way must be retried |
 | One JSON file as the store | Zero setup; atomic write via temp file + rename | Move to SQLite past a few thousand tasks; only `Store` changes |
 | No framework, no libraries | About 100 MB RAM, every line readable | Hand-written JSON and HTTP routing |
 
@@ -203,5 +210,8 @@ Design decisions are recorded in [docs/adr/](docs/adr/).
 
 - **Sandboxing is process-level.** Checks run your project's own build and tests, which execute code the agent wrote.
   On a VPS the service runs as a locked-down user. Next step: run each check inside a Docker container with no network.
+- **Search has a 3 second budget.** A model can pass any regex to `search`; a pathological one stops with a
+  "too slow" message instead of hanging the orchestrator thread. Simple, but it is a time box, not a regex engine
+  without backtracking.
 - **One engineer per task.** Next: the lead splits large features into ordered sub-tasks.
 - **Corrections loop.** Next: turn repeated review feedback into new playbook rules, with your approval.
