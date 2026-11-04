@@ -239,8 +239,18 @@ public final class Json {
             if (++depth > MAX_DEPTH) throw error("Nesting deeper than " + MAX_DEPTH);
         }
 
+        /** Also skips // comments to the end of the line, so config files can explain themselves. */
         void skipWhitespace() {
-            while (pos < s.length() && Character.isWhitespace(s.charAt(pos))) pos++;
+            while (pos < s.length()) {
+                if (Character.isWhitespace(s.charAt(pos))) {
+                    pos++;
+                } else if (s.startsWith("//", pos)) {
+                    int end = s.indexOf('\n', pos);
+                    pos = end < 0 ? s.length() : end;
+                } else {
+                    return;
+                }
+            }
         }
 
         char peek() {

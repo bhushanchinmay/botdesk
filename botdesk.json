@@ -1,19 +1,31 @@
+// botdesk settings. // comments are allowed. Unknown keys and out-of-range numbers stop startup
+// with a clear message, so a typo never silently falls back to a default.
 {
+  // Dashboard address. Keep 127.0.0.1 and reach it through an SSH tunnel.
+  // allowedHosts: extra Host names to accept, e.g. a Tailscale hostname.
   "server": { "bind": "127.0.0.1", "port": 8080, "allowedHosts": [] },
+  // Routines run on this clock.
   "timezone": "Asia/Kolkata",
   "dataDir": "data",
   "projectsDir": "projects",
   "playbooksDir": "playbooks",
   "workspacesDir": "data/workspaces",
 
+  // How often the orchestrator wakes up (1 to 3600 s).
   "tickSeconds": 5,
+  // Review or gate failures sent back to the engineer before a task asks you (0 to 10).
   "maxRepairCycles": 2,
+  // Tool calls one engineer run may make (1 to 200).
   "maxAgentSteps": 30,
+  // Lowest reviewer score, out of 10, that counts as a pass.
   "reviewPassScore": 8,
+  // Longest a single build or test check may run (10 to 7200 s).
   "checkTimeoutSeconds": 600,
+  // Spending limits. Model calls stop once a limit is reached.
   "monthlyBudgetUsd": 10,
   "taskBudgetUsd": 2.0,
 
+  // Any OpenAI-compatible API. apiKeyEnv is the NAME of the environment variable, never the key.
   "providers": {
     "openrouter": {
       "baseUrl": "https://openrouter.ai/api/v1",
@@ -31,18 +43,21 @@
     }
   },
 
+  // Which model fills each role. Optional inputUsdPerM / outputUsdPerM price a provider that does not report cost.
   "roles": {
     "lead":     { "provider": "experiential", "model": "deepseek-v4.1-flash-uncensored" },
     "engineer": { "provider": "experiential", "model": "glm-5.3-uncensored" },
     "reviewer": { "provider": "openrouter", "model": "openai/gpt-6.1-terra" }
   },
 
+  // Name and email on the team's commits.
   "git": {
     "name": "Chinmay Bhushan",
     "email": "21293962+bhushanchinmay@users.noreply.github.com"
   },
   "githubTokenEnv": "GITHUB_TOKEN",
 
+  // Scheduled tasks. project and kind must match a file in projects/ and playbooks/.
   "routines": [
     {
       "name": "nightly-build-health",
@@ -55,6 +70,7 @@
     }
   ],
 
+  // Optional. allowedUserIds is required when enabled: only these members can approve.
   "slack": {
     "enabled": false,
     "appTokenEnv": "SLACK_APP_TOKEN",

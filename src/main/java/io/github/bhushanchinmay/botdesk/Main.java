@@ -42,7 +42,18 @@ public final class Main {
     public static void main(String[] args) throws Exception {
         boolean checkOnly = List.of(args).contains("--check");
         String configPath = Arrays.stream(args).filter(a -> !a.startsWith("--")).findFirst().orElse("botdesk.json");
-        Config config = Config.load(Path.of(configPath));
+        // Load and validate every local file first, so --check also catches typos in projects and playbooks.
+        Config config;
+        Registry registry;
+        try {
+            config = Config.load(Path.of(configPath));
+            registry = Registry.load(config.projectsDir(), config.playbooksDir());
+            requireKnownRoutineTargets(config, registry);
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            System.err.println("Config error: " + e.getMessage());
+            System.exit(2);
+            return;
+        }
 
         // One client for the whole app: HttpClient is immutable and thread-safe, and it pools connections.
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(15)).build();
@@ -52,13 +63,6 @@ public final class Main {
         if (checkOnly) System.exit(ready ? 0 : 1);
 
         Store store = new JsonFileStore(config.dataDir());
-        Registry registry = Registry.load(config.projectsDir(), config.playbooksDir());
-        for (Config.Routine r : config.routines()) {
-            if (r.enabled() && (registry.project(r.project()).isEmpty() || registry.playbook(r.kind()).isEmpty())) {
-                throw new IllegalStateException("Routine '" + r.name() + "' names an unknown project or kind: "
-                        + r.project() + " / " + r.kind());
-            }
-        }
         LlmClient llm = new OpenAiCompatibleClient(config, store, http);
         TaskService tasks = new TaskService(store, registry);
         Orchestrator orchestrator = new Orchestrator(config, store, registry, llm, tasks,
@@ -112,5 +116,15 @@ public final class Main {
         }, "botdesk-shutdown"));
         LOG.info("botdesk started: " + registry.projects().size() + " project(s), "
                 + registry.playbooks().size() + " kind(s) of work");
+    }
+
+    /** A routine with a typo in its project or kind would otherwise fail quietly once a day. */
+    private static void requireKnownRoutineTargets(Config config, Registry registry) {
+        for (Config.Routine r : config.routines()) {
+            if (r.enabled() && (registry.project(r.project()).isEmpty() || registry.playbook(r.kind()).isEmpty())) {
+                throw new IllegalStateException("Routine '" + r.name() + "' names an unknown project or kind: "
+                        + r.project() + " / " + r.kind());
+            }
+        }
     }
 }

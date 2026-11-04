@@ -15,7 +15,8 @@ public final class TestRunner {
 
     public static void main(String[] args) throws Exception {
         List<Class<?>> suites = List.of(JsonTest.class, TaskStateTest.class, WorkspaceTest.class, GatesTest.class,
-                OpenAiClientTest.class, PipelineTest.class, ChatServiceTest.class, SetupCheckTest.class, AgentTest.class);
+                OpenAiClientTest.class, PipelineTest.class, ChatServiceTest.class, SetupCheckTest.class, AgentTest.class,
+                ConfigTest.class);
         int passed = 0;
         int failed = 0;
         for (Class<?> suite : suites) {

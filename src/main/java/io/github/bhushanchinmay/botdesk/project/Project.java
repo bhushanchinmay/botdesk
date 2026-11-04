@@ -6,6 +6,7 @@ import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * An attached codebase: one JSON file in projects/. This is how the team works on "any project":
@@ -26,7 +27,11 @@ public record Project(
         String githubRepo,
         String remote) {
 
+    private static final Set<String> KEYS = Set.of("name", "repo", "baseBranch", "checks", "context",
+            "testPaths", "protectedPaths", "githubRepo", "remote");
+
     public static Project fromMap(Map<String, Object> m, Path baseDir) {
+        Obj.requireKnownKeys(m, "project", KEYS);
         Map<String, String> checks = new LinkedHashMap<>();
         Obj.map(m, "checks").forEach((k, v) -> checks.put(k, String.valueOf(v)));
         return new Project(

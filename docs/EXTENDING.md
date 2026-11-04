@@ -13,6 +13,7 @@ Every extension point is one interface. Pick the recipe for what you want to add
 | A different coding agent | `agent.CodingEngine` | `Main` |
 | A database | `store.Store` | `Main` |
 | A notification channel | `orchestrator.Notifier` | `TaskService.setNotifier` |
+| A setting | a record field in `Config` | its key in the matching `*_KEYS` set, or startup rejects it as unknown |
 
 ## A quality rule
 

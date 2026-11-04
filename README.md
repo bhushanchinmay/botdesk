@@ -118,6 +118,11 @@ git credentials for that remote. Without a token, release keeps the branch local
 - Other settings: `maxAgentSteps` (30), `reviewPassScore` (8), `maxRepairCycles` (2), `checkTimeoutSeconds` (600).
 - **Routines** run a task on a schedule, for example nightly `maintenance`. Minimum interval: 1 hour.
 
+`botdesk.json` documents each setting with `//` comments. Config files are checked strictly at startup:
+an unknown key (a typo like `reviewPassScor`), a wrong type (`"port": "8080"`) or an out-of-range number
+(`"reviewPassScore": 80`) stops botdesk with a `Config error:` line that names the key. The same check covers
+`projects/*.json` and `playbooks/*.json`. Run `./scripts/run-local.sh --check` to validate without starting.
+
 ## 7. Where to run it
 
 | | Local (Mac) | VPS |
@@ -151,7 +156,7 @@ Anything else goes to the lead, which can create tasks for you.
 
 ```bash
 ./build.sh          # builds botdesk.jar with plain javac
-./build.sh test     # 43 tests: real git repos, a scripted fake model; no network, no API cost
+./build.sh test     # 47 tests: real git repos, a scripted fake model; no network, no API cost
 ```
 
 ## 9a. Token use: code first, models last

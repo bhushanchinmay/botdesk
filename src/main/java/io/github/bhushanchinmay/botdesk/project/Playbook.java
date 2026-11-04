@@ -3,6 +3,7 @@ package io.github.bhushanchinmay.botdesk.project;
 import io.github.bhushanchinmay.botdesk.json.Obj;
 
 import java.util.Map;
+import java.util.Set;
 
 /**
  * How one kind of work is done (feature, bugfix, bughunt, maintenance, prototype, investigate).
@@ -22,7 +23,11 @@ public record Playbook(
         boolean readOnly,
         boolean checksFirst) {
 
+    private static final Set<String> KEYS = Set.of("kind", "description", "leadGuide", "engineerGuide",
+            "reviewRubric", "requireTestChange", "allowEmptyDiff", "readOnly", "checksFirst");
+
     public static Playbook fromMap(Map<String, Object> m) {
+        Obj.requireKnownKeys(m, "playbook", KEYS);
         return new Playbook(
                 Obj.str(m, "kind", ""),
                 Obj.str(m, "description", ""),
