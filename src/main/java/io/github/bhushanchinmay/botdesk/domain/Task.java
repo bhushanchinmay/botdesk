@@ -32,6 +32,7 @@ public final class Task {
     private String approvedCommit;
     private String prUrl;
     private int reviewScore = -1;
+    private String reviewedCommit;
     private final Instant createdAt;
     private Instant updatedAt;
     private Instant startedAt;
@@ -64,7 +65,7 @@ public final class Task {
     public void appendToGoal(String note) { goal = goal + "\n\nUpdate from you: " + note; touch(); }
     public void startedWork(String branch, String baseCommit) { this.branch = branch; this.baseCommit = baseCommit; headCommit = baseCommit; touch(); }
     public void newOutput(String headCommit) { outputVersion++; this.headCommit = headCommit; touch(); }
-    public void setReviewScore(int score) { reviewScore = score; touch(); }
+    public void recordReview(int score, String commit) { reviewScore = score; reviewedCommit = commit; touch(); }
     public void approve() { approvedCommit = headCommit; touch(); }
     public void setPrUrl(String url) { prUrl = url; touch(); }
     public void countRepairCycle() { repairCycles++; touch(); }
@@ -96,6 +97,7 @@ public final class Task {
     public String approvedCommit() { return approvedCommit; }
     public String prUrl() { return prUrl; }
     public int reviewScore() { return reviewScore; }
+    public String reviewedCommit() { return reviewedCommit; }
     public Instant createdAt() { return createdAt; }
     public Instant updatedAt() { return updatedAt; }
     public Instant startedAt() { return startedAt; }
@@ -124,6 +126,7 @@ public final class Task {
         m.put("approvedCommit", approvedCommit);
         m.put("prUrl", prUrl);
         m.put("reviewScore", reviewScore);
+        m.put("reviewedCommit", reviewedCommit);
         m.put("createdAt", str(createdAt));
         m.put("updatedAt", str(updatedAt));
         m.put("startedAt", str(startedAt));
@@ -148,6 +151,7 @@ public final class Task {
         t.approvedCommit = Obj.str(m, "approvedCommit", null);
         t.prUrl = Obj.str(m, "prUrl", null);
         t.reviewScore = (int) Obj.num(m, "reviewScore", -1);
+        t.reviewedCommit = Obj.str(m, "reviewedCommit", null);
         t.updatedAt = instant(m, "updatedAt");
         t.startedAt = instant(m, "startedAt");
         t.finishedAt = instant(m, "finishedAt");

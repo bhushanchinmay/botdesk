@@ -8,7 +8,8 @@ import java.util.Map;
  * How one kind of work is done (feature, bugfix, bughunt, maintenance, prototype, investigate).
  * One JSON file in playbooks/. The rules that matter most are enforced in code:
  * requireTestChange (the change must touch a test), allowEmptyDiff (a report with no code change is fine)
- * and readOnly (any code change is a failure, for support questions).
+ * readOnly (any code change is a failure, for support questions), and checksFirst (run the checks before
+ * any model; if they all pass there is nothing to do, so no tokens are spent).
  */
 public record Playbook(
         String kind,
@@ -18,7 +19,8 @@ public record Playbook(
         String reviewRubric,
         boolean requireTestChange,
         boolean allowEmptyDiff,
-        boolean readOnly) {
+        boolean readOnly,
+        boolean checksFirst) {
 
     public static Playbook fromMap(Map<String, Object> m) {
         return new Playbook(
@@ -29,6 +31,7 @@ public record Playbook(
                 Obj.str(m, "reviewRubric", ""),
                 Obj.bool(m, "requireTestChange", true),
                 Obj.bool(m, "allowEmptyDiff", false),
-                Obj.bool(m, "readOnly", false));
+                Obj.bool(m, "readOnly", false),
+                Obj.bool(m, "checksFirst", false));
     }
 }

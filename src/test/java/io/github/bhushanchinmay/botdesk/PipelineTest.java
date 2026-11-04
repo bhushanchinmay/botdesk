@@ -14,6 +14,7 @@ import io.github.bhushanchinmay.botdesk.orchestrator.TaskService.Decision;
 import io.github.bhushanchinmay.botdesk.project.Git;
 import io.github.bhushanchinmay.botdesk.project.GitHub;
 import io.github.bhushanchinmay.botdesk.project.Project;
+import io.github.bhushanchinmay.botdesk.store.JsonFileStore;
 import io.github.bhushanchinmay.botdesk.store.Store;
 
 import java.nio.file.Files;
@@ -39,7 +40,7 @@ public final class PipelineTest {
         Path dir = Fixtures.tempDir();
         Config config = Fixtures.config(dir, "http://unused", 10);
         Project project = Fixtures.gitProject(dir, githubRepo);
-        Store store = new Store(config.dataDir());
+        Store store = new JsonFileStore(config.dataDir());
         var registry = Fixtures.registry(project);
         TaskService tasks = new TaskService(store, registry);
         Orchestrator orch = new Orchestrator(config, store, registry, llm, tasks, new ToolLoopAgent(llm, store),
@@ -139,7 +140,9 @@ public final class PipelineTest {
     public static void testLowReviewScoreSendsBack() {
         Fixtures.FakeLlm llm = new Fixtures.FakeLlm().text("lead", PLAN).text("reviewer", WEAK, PASS);
         goodEngineer(llm);
-        llm.tools("engineer", call("finish", "summary", "Renamed nothing; test name is fine as is."));
+        llm.tools("engineer", call("replace_in_file", "path", "tests/add_test.txt", "old_text", "add(2,3) == 5",
+                        "new_text", "add_two_positive_numbers: add(2,3) == 5"))
+           .tools("engineer", call("finish", "summary", "Gave the test a clear name."));
         Rig r = rig(llm);
         Task task = r.tasks().create("calc", "bugfix", "add() subtracts", "fix it");
         approvePlan(r);
@@ -214,10 +217,48 @@ public final class PipelineTest {
         Rig r = rig(llm);
         Task task = r.tasks().create("calc", "bugfix", "t", "g");
         r.orch().tick(5);
-        Store reloaded = new Store(r.config().dataDir());
+        Store reloaded = new JsonFileStore(r.config().dataDir());
         Task again = reloaded.task(task.id()).orElseThrow();
         eq(TaskState.CONFIRMING, again.state(), "state survives restart");
         eq(task.plan(), again.plan(), "plan survives restart");
         eq(1, reloaded.openRequests().size(), "request survives restart");
+    }
+
+    public static void testUnchangedCodeIsNotReviewedTwice() {
+        Fixtures.FakeLlm llm = new Fixtures.FakeLlm().text("lead", PLAN).text("reviewer", WEAK);
+        goodEngineer(llm);
+        llm.tools("engineer", call("finish", "summary", "I think it is fine."))
+           .tools("engineer", call("finish", "summary", "Still fine."));
+        Rig r = rig(llm);
+        Task task = r.tasks().create("calc", "bugfix", "add() subtracts", "fix it");
+        approvePlan(r);
+        r.orch().tick(20);
+        eq(1, llm.calls("reviewer"), "identical code is never sent to the reviewer again");
+        eq(TaskState.NEEDS_YOU, task.state(), "escalates instead of paying for the same verdict");
+        check(task.lastFeedback().contains("No code changed since the last review"), "engineer told why");
+    }
+
+    public static void testHealthyMaintenanceCallsNoModel() {
+        Fixtures.FakeLlm llm = new Fixtures.FakeLlm(); // any model call would throw
+        Rig r = rig(llm);
+        // Write the file directly: "sed -i" differs between macOS (BSD) and Linux (GNU).
+        Fixtures.sh(r.project().repo(), "printf 'add(a, b) = a + b\\n' > src/calc.txt && echo t > tests/add_test.txt"
+                + " && git add -A && git -c user.name=t -c user.email=t@t commit -qm green");
+        Task task = r.tasks().createPreConfirmed("calc", "maintenance", "Nightly build health", "Run all checks.");
+        r.orch().tick(5);
+        eq(0, llm.requests.size(), "no model call when the build is already green");
+        eq(TaskState.NEEDS_YOU, task.state(), "reported to you");
+        check(onlyOpen(r.store()).prompt().contains("No model was called"), "you are told it cost nothing");
+    }
+
+    public static void testRoutineWithoutPlanGivesEngineerAClearPrompt() {
+        Fixtures.FakeLlm llm = new Fixtures.FakeLlm().text("reviewer", PASS);
+        goodEngineer(llm);
+        Rig r = rig(llm);
+        r.tasks().createPreConfirmed("calc", "maintenance", "Nightly build health", "Fix the red build.");
+        r.orch().tick(10);
+        String prompt = (String) llm.requests.get(0).messages().get(1).get("content");
+        check(!prompt.contains("null"), "no 'null' plan in the prompt: " + prompt);
+        check(prompt.contains("already fails before your change"), "baseline failure handed to the engineer up front");
     }
 }

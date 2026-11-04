@@ -29,6 +29,7 @@ public final class Workspace {
     private static final int MAX_READ_BYTES = 120_000;
     private static final int MAX_OUTPUT_CHARS = 6_000;
     private static final int MAX_LIST = 400;
+    private static final Pattern ANSI = Pattern.compile("\u001B\\[[0-9;?]*[A-Za-z]");
 
     private final Path root;
     private final Project project;
@@ -159,6 +160,8 @@ public final class Workspace {
 
     public List<String> checkNames() { return List.copyOf(project.checks().keySet()); }
 
+    // TODO: run each check in a container with no network (docker run --network none). Checks execute
+    //  code the agent wrote; today the only isolation is the OS user botdesk runs as.
     public CheckResult runCheck(String name) {
         String command = project.checks().get(name);
         if (command == null) {
@@ -171,7 +174,8 @@ public final class Workspace {
             boolean done = p.waitFor(checkTimeout.toSeconds(), TimeUnit.SECONDS);
             if (!done) p.descendants().forEach(ProcessHandle::destroyForcibly);
             if (!done) p.destroyForcibly();
-            String output = tail(Files.readString(log, StandardCharsets.UTF_8));
+            // Build tools colour their output; the escape codes are tokens with no meaning to a model.
+            String output = tail(ANSI.matcher(Files.readString(log, StandardCharsets.UTF_8)).replaceAll(""));
             Files.deleteIfExists(log);
             return new CheckResult(name, done ? p.exitValue() : -1, !done, output);
         } catch (IOException e) {

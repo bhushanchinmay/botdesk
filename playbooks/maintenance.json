@@ -5,5 +5,6 @@
   "engineerGuide": "Run every check first and read the output. Fix failures and warnings at their root. Do not upgrade major versions or add dependencies unless the task asks. If everything is healthy, change nothing and report that.",
   "reviewRubric": "Is the build healthier than before? Are changes low-risk and limited to maintenance? Was anything risky (major upgrades, removed checks) slipped in?",
   "requireTestChange": false,
-  "allowEmptyDiff": true
+  "allowEmptyDiff": true,
+  "checksFirst": true
 }

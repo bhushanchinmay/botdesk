@@ -119,5 +119,5 @@ public final class TaskService {
         return "Done: request " + requestId + " " + verb + ". Task #" + task.id() + " is now " + task.state() + ".";
     }
 
-    static String shortSha(String sha) { return sha == null ? "-" : sha.substring(0, Math.min(10, sha.length())); }
+    public static String shortSha(String sha) { return sha == null ? "-" : sha.substring(0, Math.min(10, sha.length())); }
 }

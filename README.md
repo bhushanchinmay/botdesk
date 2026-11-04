@@ -145,15 +145,53 @@ Anything else goes to the lead, which can create tasks for you.
 
 ```bash
 ./build.sh          # builds botdesk.jar with plain javac
-./build.sh test     # 28 tests: real git repos, a scripted fake model; no network, no API cost
+./build.sh test     # 37 tests: real git repos, a scripted fake model; no network, no API cost
 ```
+
+## 9a. Token use: code first, models last
+
+Every model call costs money, so botdesk does in plain code everything that does not need judgement.
+
+| Saver | How | Where |
+|---|---|---|
+| Commands never call a model | `approve 12`, `status`, `reply 12 ...` are parsed in code | `ChatService` |
+| Gates before the reviewer | A change that fails a check or rule never reaches the reviewer | `quality/`, `BuildStage` |
+| Green build, no model | `maintenance` runs the checks first; if all pass, no model is called at all | `BuildStage` (`checksFirst`) |
+| Failures handed over | When checks already fail, their output goes into the engineer's first prompt | `BuildStage` |
+| No second review of identical code | Same commit, same verdict: it goes back without asking the reviewer | `ReviewStage` |
+| Old tool results trimmed | Every step re-sends the conversation; results older than the last 6 become a one-line stub | `ToolLoopAgent` |
+| Output capped and cleaned | Files, search hits, diffs and check output are clipped; colour codes stripped | `Workspace`, stages |
+| Files read on demand | The agent gets a file list, not the whole repo | `Workspace` |
+| Budget guard | Checked before each call, per task and per month | `OpenAiCompatibleClient` |
+| Cheap roles where possible | Each role picks its own model; use a small one for the lead if plans are simple | `botdesk.json` |
+
+The task page shows tokens in and out, the number of model calls, and the cost.
+Static instructions come first in every prompt, so providers that cache prompt prefixes can reuse them.
+
+## 9b. Code layout
+
+```
+config/       botdesk.json and the setup check        domain/   Task, 11 states, records
+orchestrator/ TaskService (state changes), Orchestrator (picks the next task)
+  stage/      PlanStage, BuildStage, ReviewStage, ReleaseStage
+agent/        Workspace (sandbox), ToolLoopAgent (the loop), CodingEngine (the interface)
+  tool/       Tool, ToolRegistry, BuiltInTools
+quality/      Gate, QualityGates, BuiltInGates
+llm/          one client for any OpenAI-compatible provider
+project/      projects, playbooks, Git, GitHub          store/    Store, JsonFileStore
+web/ chat/ slack/   the ways you talk to the team       json/     a small JSON parser
+```
+
+To add a provider, playbook, gate, tool, stage or store, see [docs/EXTENDING.md](docs/EXTENDING.md).
+Design decisions are recorded in [docs/adr/](docs/adr/).
 
 ## 10. Design decisions (and trade-offs)
 
 | Decision | Why | Trade-off |
 |---|---|---|
-| Own agent loop (`ToolLoopAgent`, about 150 lines) behind a `CodingEngine` interface | Every step is explainable and logged; an external agent (OpenCode, aider) can plug in later | Less capable than mature coding agents on large refactors |
-| Gates in code before the reviewer model | A model can ignore a prompt, not code. Also saves reviewer tokens | Each new rule is a small code change |
+| Own agent loop (`ToolLoopAgent`) behind a `CodingEngine` interface, tools in a registry | Every step is explainable and logged; an external agent (OpenCode, aider) can plug in later | Less capable than mature coding agents on large refactors |
+| Gates in code before the reviewer model, one small class per rule | A model can ignore a prompt, not code. Also saves reviewer tokens | Each new rule is a small class |
+| One class per pipeline stage | Adding a step does not touch the others; each is tested through the full pipeline | A few more files than one big orchestrator |
 | Git worktree per task | Parallel-safe, never touches `main`, easy cleanup | Needs a local clone of each project |
 | Named checks only, no shell tool | Small, auditable attack surface | Agents cannot install tools or explore with ad-hoc commands |
 | Approval bound to a commit SHA | What you reviewed is exactly what ships | Any later change needs approval again |

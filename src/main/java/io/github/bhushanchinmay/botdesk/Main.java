@@ -12,6 +12,7 @@ import io.github.bhushanchinmay.botdesk.project.Git;
 import io.github.bhushanchinmay.botdesk.project.GitHub;
 import io.github.bhushanchinmay.botdesk.project.Registry;
 import io.github.bhushanchinmay.botdesk.slack.SlackGateway;
+import io.github.bhushanchinmay.botdesk.store.JsonFileStore;
 import io.github.bhushanchinmay.botdesk.store.Store;
 import io.github.bhushanchinmay.botdesk.web.DashboardServer;
 
@@ -43,7 +44,7 @@ public final class Main {
         boolean ready = new SetupCheck(config, System::getenv, HttpClient.newHttpClient(), System.out).run();
         if (checkOnly) System.exit(ready ? 0 : 1);
 
-        Store store = new Store(config.dataDir());
+        Store store = new JsonFileStore(config.dataDir());
         Registry registry = Registry.load(config.projectsDir(), config.playbooksDir());
         LlmClient llm = new OpenAiCompatibleClient(config, store);
         TaskService tasks = new TaskService(store, registry);

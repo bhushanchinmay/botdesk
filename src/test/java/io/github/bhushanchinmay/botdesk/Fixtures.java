@@ -74,8 +74,9 @@ final class Fixtures {
 
     static Registry registry(Project project) {
         Map<String, Playbook> playbooks = Map.of(
-                "bugfix", new Playbook("bugfix", "Fix a bug", "plan it", "fix it", "is it right", true, false, false),
-                "investigate", new Playbook("investigate", "Answer a question", "plan", "read only", "is it right", false, true, true));
+                "bugfix", new Playbook("bugfix", "Fix a bug", "plan it", "fix it", "is it right", true, false, false, false),
+                "investigate", new Playbook("investigate", "Answer a question", "plan", "read only", "is it right", false, true, true, false),
+                "maintenance", new Playbook("maintenance", "Keep the build healthy", "plan", "fix it", "is it right", false, true, false, true));
         return new Registry(Map.of(project.name(), project), playbooks);
     }
 

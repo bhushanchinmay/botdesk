@@ -3,6 +3,7 @@ package io.github.bhushanchinmay.botdesk;
 import io.github.bhushanchinmay.botdesk.domain.Records.ModelCall;
 import io.github.bhushanchinmay.botdesk.llm.LlmClient;
 import io.github.bhushanchinmay.botdesk.llm.OpenAiCompatibleClient;
+import io.github.bhushanchinmay.botdesk.store.JsonFileStore;
 import io.github.bhushanchinmay.botdesk.store.Store;
 
 import java.net.http.HttpClient;
@@ -38,7 +39,7 @@ public final class OpenAiClientTest {
 
     public static void testTextReplyAndProviderCost() throws Exception {
         Path dir = Fixtures.tempDir();
-        Store store = new Store(dir.resolve("data"));
+        Store store = new JsonFileStore(dir.resolve("data"));
         try (Fixtures.StubServer stub = new Fixtures.StubServer().on("/chat/completions", 200, TEXT)) {
             LlmClient.Result r = client(dir, stub.url(), 10, store).complete(ask(7, "engineer"));
             eq("hello", r.text(), "text");
@@ -53,7 +54,7 @@ public final class OpenAiClientTest {
         Path dir = Fixtures.tempDir();
         try (Fixtures.StubServer stub = new Fixtures.StubServer().on("/chat/completions", 200, TOOL_CALL)) {
             List<Map<String, Object>> tools = List.of(Map.of("type", "function", "function", Map.of("name", "read_file")));
-            LlmClient.Result r = client(dir, stub.url(), 10, new Store(dir.resolve("data")))
+            LlmClient.Result r = client(dir, stub.url(), 10, new JsonFileStore(dir.resolve("data")))
                     .complete(new LlmClient.Request(0, "engineer", List.of(LlmClient.user("go")), tools));
             eq(1, r.toolCalls().size(), "one tool call");
             eq("read_file", r.toolCalls().get(0).name(), "tool name");
@@ -70,11 +71,11 @@ public final class OpenAiClientTest {
         Path dir = Fixtures.tempDir();
         try (Fixtures.StubServer stub = new Fixtures.StubServer()
                 .on("/chat/completions", 503, "busy").on("/chat/completions", 200, TEXT)) {
-            eq("hello", client(dir, stub.url(), 10, new Store(dir.resolve("data"))).complete(ask(0, "lead")).text(), "retried");
+            eq("hello", client(dir, stub.url(), 10, new JsonFileStore(dir.resolve("data"))).complete(ask(0, "lead")).text(), "retried");
             eq(2, stub.bodies.size(), "two attempts");
         }
         try (Fixtures.StubServer stub = new Fixtures.StubServer().on("/chat/completions", 401, "bad key")) {
-            OpenAiCompatibleClient c = client(dir, stub.url(), 10, new Store(dir.resolve("data2")));
+            OpenAiCompatibleClient c = client(dir, stub.url(), 10, new JsonFileStore(dir.resolve("data2")));
             throwsAny(() -> c.complete(ask(0, "lead")), "401 fails");
             eq(1, stub.bodies.size(), "no retry on 401");
         }
@@ -82,7 +83,7 @@ public final class OpenAiClientTest {
 
     public static void testBudgetGuardBlocksBeforeCalling() throws Exception {
         Path dir = Fixtures.tempDir();
-        Store store = new Store(dir.resolve("data"));
+        Store store = new JsonFileStore(dir.resolve("data"));
         store.recordCall(new ModelCall(0, "lead", "stub", "m", 0, 0, 5.0, Instant.now()));
         try (Fixtures.StubServer stub = new Fixtures.StubServer().on("/chat/completions", 200, TEXT)) {
             try {

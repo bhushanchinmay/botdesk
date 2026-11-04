@@ -169,11 +169,14 @@ final class Views {
                 <tr><th>Version</th><td>v%d</td><th>Review score</th><td>%s</td></tr>
                 <tr><th>Repair cycles</th><td>%d of %d</td><th>Your interventions</th><td>%d</td></tr>
                 <tr><th>Cost</th><td>$%.4f</td><th>Elapsed</th><td>%s</td></tr>
+                <tr><th>Tokens</th><td>%,d in · %,d out</td><th>Model calls</th><td>%d</td></tr>
                 </table>
                 """.formatted(t.state(), esc(t.project()), esc(t.kind()), esc(orDash(t.branch())), pr,
                 sha(t.baseCommit()), sha(t.headCommit()), sha(t.approvedCommit()), t.outputVersion(),
                 t.reviewScore() < 0 ? "-" : t.reviewScore() + "/10", t.repairCycles(), config.maxRepairCycles(),
-                t.interventions(), store.taskCost(t.id()), duration));
+                t.interventions(), store.taskCost(t.id()), duration,
+                store.calls(t.id()).stream().mapToLong(ModelCall::inputTokens).sum(),
+                store.calls(t.id()).stream().mapToLong(ModelCall::outputTokens).sum(), store.calls(t.id()).size()));
 
         store.requests(t.id()).stream().filter(HumanRequest::open).forEach(r -> sb.append(requestCard(r)));
 
