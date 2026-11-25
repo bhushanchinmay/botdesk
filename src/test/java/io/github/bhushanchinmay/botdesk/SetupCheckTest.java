@@ -18,9 +18,9 @@ import static io.github.bhushanchinmay.botdesk.TestRunner.eq;
 public final class SetupCheckTest {
 
     private static final String MODELS = """
-            {"data":[{"id":"glm-5.3-uncensored","supported_parameters":["tools","temperature"]},
-                     {"id":"deepseek-v4.1-flash-uncensored","supported_parameters":["temperature"]},
-                     {"id":"openai/gpt-6.1-terra"}]}""";
+            {"data":[{"id":"coder-1","supported_parameters":["tools","temperature"]},
+                     {"id":"fast-chat-1","supported_parameters":["temperature"]},
+                     {"id":"reviewer-1"}]}""";
 
     private static Config config(String url, String lead, String engineer, String reviewer) {
         Map<String, Config.Role> roles = new LinkedHashMap<>();
@@ -41,7 +41,7 @@ public final class SetupCheckTest {
     public static void testAllGood() throws Exception {
         try (Fixtures.StubServer s = new Fixtures.StubServer().on("/models", 200, MODELS)) {
             boolean[] ok = new boolean[1];
-            String out = run(config(s.url(), "deepseek-v4.1-flash-uncensored", "glm-5.3-uncensored", "openai/gpt-6.1-terra"),
+            String out = run(config(s.url(), "fast-chat-1", "coder-1", "reviewer-1"),
                     k -> "xpl_good", ok);
             check(ok[0], "ready: " + out);
             eq(3, out.split("OK   ").length - 1, "three OK lines");
@@ -51,14 +51,14 @@ public final class SetupCheckTest {
     public static void testRejectedKeyBatchModelAndMissingTools() throws Exception {
         try (Fixtures.StubServer s = new Fixtures.StubServer().on("/models", 401, "{\"error\":\"invalid_key\"}")) {
             boolean[] ok = new boolean[1];
-            String out = run(config(s.url(), "x", "y", "openai/gpt-6.1-terra:batch"), k -> "xpl_bad", ok);
+            String out = run(config(s.url(), "x", "y", "reviewer-1:batch"), k -> "xpl_bad", ok);
             check(!ok[0], "not ready");
             check(out.contains("rejected the key in P_KEY (HTTP 401). It starts with 'xpl_'"), "401 explained: " + out);
             check(out.contains("':batch' models answer asynchronously"), "batch explained");
         }
         try (Fixtures.StubServer s = new Fixtures.StubServer().on("/models", 200, MODELS)) {
             boolean[] ok = new boolean[1];
-            String out = run(config(s.url(), "glm-5.3-uncensored", "deepseek-v4.1-flash-uncensored", "nope-model"), k -> "xpl_good", ok);
+            String out = run(config(s.url(), "coder-1", "fast-chat-1", "nope-model"), k -> "xpl_good", ok);
             check(out.contains("does not support tool calling"), "engineer without tools caught: " + out);
             check(out.contains("does not list model 'nope-model'"), "unknown model caught");
         }

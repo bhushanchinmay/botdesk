@@ -60,6 +60,7 @@ Each playbook is one JSON file in `playbooks/`. Add your own the same way.
 ## 4. Try the demo in 5 minutes
 
 ```bash
+cp botdesk.example.json botdesk.json                              # your settings; git-ignored
 ./scripts/demo-setup.sh                                          # creates demo/shop-cart (a repo with a real bug) and attaches it
 security add-generic-password -U -s botdesk -a OPENROUTER_API_KEY -w   # store your key in the macOS Keychain
 ./scripts/run-local.sh                                           # http://localhost:8080
@@ -102,6 +103,8 @@ only (permissions: Contents read/write, Pull requests read/write) as `GITHUB_TOK
 git credentials for that remote. Without a token, release keeps the branch locally for you to merge.
 
 ## 6. Models (`botdesk.json`)
+
+`botdesk.json` is your own copy of `botdesk.example.json` and is git-ignored, so your model picks and git identity stay local.
 
 ```json
 "roles": {

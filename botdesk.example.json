@@ -1,3 +1,4 @@
+// botdesk settings. Copy to botdesk.json (git-ignored) and edit that copy.
 // botdesk settings. // comments are allowed. Unknown keys and out-of-range numbers stop startup
 // with a clear message, so a typo never silently falls back to a default.
 {
@@ -45,15 +46,15 @@
 
   // Which model fills each role. Optional inputUsdPerM / outputUsdPerM price a provider that does not report cost.
   "roles": {
-    "lead":     { "provider": "experiential", "model": "deepseek-v4.1-flash-uncensored" },
-    "engineer": { "provider": "experiential", "model": "glm-5.3-uncensored" },
-    "reviewer": { "provider": "openrouter", "model": "openai/gpt-6.1-terra" }
+    "lead":     { "provider": "openrouter", "model": "anthropic/claude-opus-5.5" },
+    "engineer": { "provider": "openrouter", "model": "anthropic/claude-sonnet-5.5" },
+    "reviewer": { "provider": "openrouter", "model": "openai/gpt-5.5" }
   },
 
   // Name and email on the team's commits.
   "git": {
-    "name": "Chinmay Bhushan",
-    "email": "21293962+bhushanchinmay@users.noreply.github.com"
+    "name": "Your Name",
+    "email": "you@users.noreply.github.com"
   },
   "githubTokenEnv": "GITHUB_TOKEN",
 

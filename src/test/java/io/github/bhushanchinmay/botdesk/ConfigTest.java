@@ -25,7 +25,7 @@ public final class ConfigTest {
 
     // The shipped files must pass the same strict checks a user's file does.
     public static void testShippedFilesAreValid() throws Exception {
-        Config c = Config.load(Path.of("botdesk.json"));
+        Config c = Config.load(Path.of("botdesk.example.json"));
         check(c.roles().containsKey("engineer"), "roles load");
         check(Registry.load(Path.of("projects"), Path.of("playbooks")).playbook("bugfix").isPresent(), "playbooks load");
     }

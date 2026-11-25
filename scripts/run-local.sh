@@ -26,6 +26,13 @@ for name in "${KEYS[@]}"; do
   fi
 done
 
+# Your settings live in botdesk.json (git-ignored). Start it from the example once.
+if [[ ! -f botdesk.json ]]; then
+  cp botdesk.example.json botdesk.json
+  echo "Created botdesk.json from botdesk.example.json. Set your models in it, then run again."
+  exit 1
+fi
+
 # Rebuild when any source file is newer than the jar.
 if [[ ! -f botdesk.jar ]] || [[ -n "$(find src -newer botdesk.jar -type f | head -1)" ]]; then
   ./build.sh
