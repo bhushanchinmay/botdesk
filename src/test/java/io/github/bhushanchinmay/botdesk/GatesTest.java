@@ -37,6 +37,7 @@ public final class GatesTest {
                 .stream().anyMatch(s -> s.contains("deleted")), "deleting tests is caught");
         check(run(BUGFIX, List.of("M\ttest.sh", "A\ttests/t.txt"), "", GREEN)
                 .stream().anyMatch(s -> s.contains("Protected")), "protected file caught");
+        // Fake key: made-up letters in the "sk-" shape, only to prove the secret gate catches it.
         check(run(BUGFIX, List.of("M\tsrc/calc.txt", "A\ttests/t.txt"),
                 "+key = \"sk-abcdefghijklmnopqrstuvwxyz123\"", GREEN).get(0).contains("secret"), "secret caught");
         check(run(BUGFIX, List.of("R100\tsrc/old.txt\tsrc/calc.txt", "A\ttests/t.txt"), "", GREEN).isEmpty(),

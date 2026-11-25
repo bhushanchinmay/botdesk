@@ -223,3 +223,7 @@ Design decisions are recorded in [docs/adr/](docs/adr/).
   without backtracking.
 - **One engineer per task.** Next: the lead splits large features into ordered sub-tasks.
 - **Corrections loop.** Next: turn repeated review feedback into new playbook rules, with your approval.
+
+## Credits
+
+The dashboard uses [htmx](https://htmx.org) 2.0.11 (Zero-Clause BSD licence), bundled as `src/main/resources/static/htmx.min.js`.
