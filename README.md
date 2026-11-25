@@ -7,6 +7,18 @@ sandboxed branch, quality gates re-run your build and tests, a reviewer scores t
 It works with any LLM provider that speaks the OpenAI API format (OpenRouter, Experiential Labs,
 Command Code, and most others). Plain Java 21, **zero external libraries**, about 100 MB of RAM.
 
+## Demo
+
+[![Watch the 84-second botdesk demo](docs/demo/botdesk-demo-poster.jpg)](docs/demo/botdesk-demo.mp4)
+
+**84 seconds, captioned, no sound.** One real bugfix task from start to finish: you file the bug, the lead plans
+and you approve, the engineer writes a failing test and then the fix, botdesk re-runs the build and tests, a
+reviewer scores the change 9/10, and you approve the exact commit.
+
+The dashboard, tools, checks, quality gates and git commits in the video are all real. The AI model is a
+scripted stand-in so the run is repeatable, so the cost and token numbers shown are not real. Section 4 shows
+how to run the same demo with your own model keys.
+
 ## 1. The big picture
 
 Think of a restaurant kitchen. Nobody serves a dish the head chef has not tasted.

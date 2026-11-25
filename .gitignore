@@ -3,7 +3,7 @@ out/
 botdesk.jar
 .env
 .DS_Store
-demo/
+/demo/
 target/
 projects/*.json
 botdesk.json
