@@ -17,6 +17,7 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -52,9 +53,14 @@ public final class DashboardServer {
         this.tasks = tasks;
         this.chat = chat;
         this.views = new Views(config, store, registry);
-        Set<String> hosts = new HashSet<>(Set.of("localhost", "127.0.0.1", "[::1]", config.bind()));
+        this.allowedHosts = allowedHosts(config);
+    }
+
+    /** Set.of rejects duplicates, and the default bind address is one of the built-in names, so build a HashSet. */
+    public static Set<String> allowedHosts(Config config) {
+        Set<String> hosts = new HashSet<>(List.of("localhost", "127.0.0.1", "[::1]", config.bind()));
         hosts.addAll(config.allowedHosts());
-        this.allowedHosts = Set.copyOf(hosts);
+        return Set.copyOf(hosts);
     }
 
     public void start() throws IOException {

@@ -47,4 +47,11 @@ public final class ChatServiceTest {
         check(!io.github.bhushanchinmay.botdesk.web.DashboardServer.hostAllowed("evil.example:8080", ok), "rebinding");
         check(!io.github.bhushanchinmay.botdesk.web.DashboardServer.hostAllowed(null, ok), "missing host");
     }
+
+    // Regression: the default bind address 127.0.0.1 repeated a built-in name and Set.of threw at startup.
+    public static void testDefaultBindAddressStartsCleanly() {
+        var hosts = io.github.bhushanchinmay.botdesk.web.DashboardServer.allowedHosts(
+                Fixtures.config(Fixtures.tempDir(), "http://127.0.0.1:1", 10));
+        check(hosts.contains("127.0.0.1") && hosts.contains("localhost"), "built-in names kept");
+    }
 }
