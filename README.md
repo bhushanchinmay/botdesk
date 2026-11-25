@@ -159,7 +159,7 @@ Anything else goes to the lead, which can create tasks for you.
 
 ```bash
 ./build.sh          # builds botdesk.jar with plain javac
-./build.sh test     # 47 tests: real git repos, a scripted fake model; no network, no API cost
+./build.sh test     # 48 tests: real git repos, a scripted fake model; no network, no API cost
 ```
 
 ## 9a. Token use: code first, models last
